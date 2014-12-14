@@ -61,8 +61,11 @@ end
     resources :appointments do
       collection do
         get 'appointment_success'
+        get 'appointment_finish'
+        get 'appointment_start'
         get 'get_time'
         get 'get_price'
+        get 'payments'
       end
 
     end

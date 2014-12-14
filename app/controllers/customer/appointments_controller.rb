@@ -29,9 +29,15 @@ class Customer::AppointmentsController < ApplicationController
   def new
     @appointment = Appointment.new
     @instrument = Instrument.find(params[:id])
+    @users = User.all
     begin
       @user = User.find(session[:user_id])
       @groups = @user.groups
+      
+      @groups.each do |group|
+        group.description = User.find(group.create_user_id).name
+      end
+      
       if @user.default_group_id ==nil
         @name=""
       else
@@ -67,6 +73,19 @@ class Customer::AppointmentsController < ApplicationController
     @appointment_id = params[:appointment_id]
   end
 
+  def appointment_finish
+    @appointment = Appointment.find(params[:appointment_id])
+    @appointment.status="已结束"
+    @appointment.save
+    redirect_to '/terminal/index'
+  end
+  
+  def appointment_start
+    @appointment = Appointment.find(params[:appointment_id])
+    @appointment.status="进行中"
+    @appointment.save
+    redirect_to '/terminal/index'
+  end
   # POST /appointments
   # POST /appointments.json
   def create
@@ -101,7 +120,7 @@ class Customer::AppointmentsController < ApplicationController
       string_key="key"+j.to_s
       string_value="content"+j.to_s
       @meta=ApplicationFormMeta.new(:key=>params[string_key],:value=>params[string_value])
-      @application_form.application_form_meta << @meta
+      @application_form.application_form_metas << @meta
     end
     #保存application_files
     uploaded_io = url_param[:url]
@@ -160,6 +179,11 @@ class Customer::AppointmentsController < ApplicationController
     #str="{'price':'"+price.to_s+"'}"
     render :text => price.to_s
   end
+  
+  def payments
+    @appointment = Appointment.new
+    @appointments = @appointment.get_appointments_not_pay_by_user_id(session[:user_id])
+  end
 
   private
 
@@ -187,7 +211,7 @@ class Customer::AppointmentsController < ApplicationController
   end
 
   def group_id_params
-    params.require(:Group).permit(:group_id)
+    params.require(:group).permit(:group_id)
   end
 
   def url_param
@@ -195,14 +219,18 @@ class Customer::AppointmentsController < ApplicationController
   end
 
   def verify(user_id)
-    return true
+    return false
   end
 
   def getFileName(uploaded_io)
     if uploaded_io.nil? == false
       strs=uploaded_io.original_filename.split(".")
       time=Time.new.to_s
-      fileName=time+'.'+strs[1]
+      if strs.length==1
+        fileName=time
+      else
+        fileName=time+'.'+strs[1]
+      end
     return fileName
     end
   end
